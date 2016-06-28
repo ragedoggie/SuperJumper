@@ -2,6 +2,9 @@ package com.missionbit.megajumper;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.audio.Sound;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
@@ -25,9 +28,9 @@ public class MegaJumper extends ApplicationAdapter {
     private BitmapFont font;
     private enum GameState {START, IN_GAME, GAME_OVER}
     private static GameState state;
-    //private music backmusic;
-    //private Sound bounce;
-
+    private Music backmusic;
+    private Sound bounce;
+    private Sound splat;
 
     @Override
     public void create () {
@@ -44,11 +47,13 @@ public class MegaJumper extends ApplicationAdapter {
         gravity = new Vector2();
         font = new BitmapFont(Gdx.files.internal("arial.fnt"),
                 Gdx.files.internal("arial.png"), false);
+        backmusic = Gdx.audio.newMusic(Gdx.files.internal("background.mp3"));
+        backmusic.setVolume(0.2f);
+        backmusic.setLooping(true);
+        backmusic.play();
+        bounce = Gdx.audio.newSound(Gdx.files.internal("bounceCut.mp3"));
         background = new Texture("lava.jpeg");
-        //music = Gdx.audio.newSound(Gdx.files.internal("my sound"));
-        //music.setLooping(true);
-        //music.play();
-        //bounce = Gdx.audio.newSound(Gdx.files.internal("my sound"))
+        splat = Gdx.audio.newSound(Gdx.files.internal("splatCut.mp3"));
         resetGame();
 
     }
@@ -110,6 +115,15 @@ public class MegaJumper extends ApplicationAdapter {
             jumper.getVelocity().x += jumper.getAccel();
             jumper.getPosition().mulAdd(jumper.getVelocity(), deltaTime);
 
+            //jumper wrap around game
+            if(jumper.getPosition().x > width){
+                jumper.setPosition(0-jumper.getBounds().getWidth(),jumper.getPosition().y);
+            }
+
+            if(jumper.getPosition().x < 0 - jumper.getBounds().getWidth()){
+                jumper.setPosition(width,jumper.getPosition().y);
+            }
+
             //platform logic
             float lowestPlatform = platforms.get(0).getPosition().y;
             for (int i = 0; i < NUM_OF_PLATFORMS; i++) {
@@ -123,8 +137,11 @@ public class MegaJumper extends ApplicationAdapter {
                 }
             }
 
-            if (jumper.getPosition().y < lowestPlatform) {
+            if (jumper.getPosition().y < lowestPlatform-300) {
                 state = GameState.GAME_OVER;
+                backmusic.stop();
+                splat.play();
+
             }
 
             //collision code, kinda bad but it works lol
@@ -132,6 +149,7 @@ public class MegaJumper extends ApplicationAdapter {
                 if (jumper.getPosition().y >= (platforms.get(i).getPosition().y + (platforms.get(i).getBounds().getHeight() / 2)) && jumper.getBounds().overlaps(platforms.get(i).getBounds())) {
                     jumper.setVelocity(0, 1000);
                     score+=1;
+                    bounce.play();
                 }
             }
         }
@@ -145,11 +163,11 @@ public class MegaJumper extends ApplicationAdapter {
 
     private void drawGame() {
         //game world camera
-        //font.setColor(0.5,0.9,0,1);
         camera.update();
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
-        font.setColor(0, 0, 0, 1);
+        font.setColor(Color.BLUE);
+        //font.setColor(0, 0, 0, 1);
         batch.draw(background,camera.position.x-width/2,camera.position.y-height/2,width,height);
         if (state == GameState.IN_GAME) {
             for (int i = 0; i < NUM_OF_PLATFORMS; i++) {
